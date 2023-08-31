@@ -10,8 +10,8 @@ async function getChatbotResponse(conversationHistory) {
             API_ENDPOINT,
             {
                 prompt: conversationHistory,
-                max_tokens: 300, // Adjust as needed
-                temperature: 0.7, // Adjust for desired randomness
+                max_tokens: 1000, // Adjust to a high value as needed
+                temperature: 0.8, // Adjust for desired randomness
             },
             {
                 headers: {
@@ -32,10 +32,9 @@ async function getChatbotResponse(conversationHistory) {
 async function main() {
     let conversationHistory = '';
 
-    // Initial prompt
+    // Initial greeting and preloaded context
     const initialPrompt = `
-        You are a helpful assistant that provides business growth advice. Please provide some basic details about your business to get started.
-        It must do market research, competitors, industry analysis, and growth strategies.
+        Welcome to the Business Growth Consultation Chatbot! I'm here to provide you with valuable advice on growing your business. Let's get started by discussing your business and its goals.
     `;
 
     conversationHistory += initialPrompt;
