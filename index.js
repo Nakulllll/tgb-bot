@@ -1,15 +1,61 @@
 require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
 const axios = require('axios');
 
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(
+    server,
+    {
+        cors: {
+            origin: '*',
+        }
+    }
+);
+const port = process.env.PORT || 3000;
+
+// OpenAI API configuration
 const API_ENDPOINT = 'https://api.openai.com/v1/engines/text-davinci-003/completions';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-async function getChatbotResponse(conversationHistory) {
+const conversationHistory = []; // Initialize conversation history
+
+app.use(express.static('public'));
+
+io.on('connection', (socket) => {
+    console.log('New user connected');
+
+    socket.on('sendMessage', async (message) => {
+        try {
+            // Add the user message to the conversation history
+            conversationHistory.push({ role: 'user', content: message });
+
+            // Get chatbot response based on updated conversation history
+            const response = await getChatbotResponse(conversationHistory);
+
+            // Add the assistant's response to the conversation history
+            conversationHistory.push({ role: 'assistant', content: response });
+
+            socket.emit('message', response);
+        } catch (error) {
+            console.error(error);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+async function getChatbotResponse(conversationHistonry) {
     try {
+
         const response = await axios.post(
             API_ENDPOINT,
             {
-                prompt: conversationHistory,
+                prompt: conversationHistory.map((message) => `AI BEE: ${message.content}`).join('\n'),
                 max_tokens: 1000, // Adjust to a high value as needed
                 temperature: 0.8, // Adjust for desired randomness
             },
@@ -29,46 +75,6 @@ async function getChatbotResponse(conversationHistory) {
     }
 }
 
-async function main() {
-    let conversationHistory = '';
-
-    // Initial greeting and preloaded context
-    const initialPrompt = `
-        Welcome to the Business Growth Consultation Chatbot! I'm here to provide you with valuable advice on growing your business. Let's get started by discussing your business and its goals.
-    `;
-
-    conversationHistory += initialPrompt;
-
-    try {
-        while (true) {
-            // Get user input from the terminal
-            const userInput = await getUserInput();
-            conversationHistory += `\nUser: ${userInput}`;
-
-            // Get chatbot response based on updated conversation history
-            const response = await getChatbotResponse(conversationHistory);
-            console.log('Chatbot response:', response);
-
-            // Append chatbot response to the conversation history
-            conversationHistory += `\nAssistant: ${response}`;
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-async function getUserInput() {
-    const readline = require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    return new Promise(resolve => {
-        readline.question('User: ', userInput => {
-            readline.close();
-            resolve(userInput);
-        });
-    });
-}
-
-main();
+server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
